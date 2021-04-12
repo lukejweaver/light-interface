@@ -7,7 +7,7 @@ import time
 import os
 import motion_detector
 import sengled_interface
-from threading import Thread, Lock
+from threading import Thread
 
 
 # start_hour, end_hour inclusive
@@ -45,6 +45,10 @@ class App(tk.Frame):
                               troughcolor='#a3f6ff')
         self.scale.pack(side=tk.LEFT, anchor='c')
 
+        self.detector = motion_detector.MotionSensor(PIR_GPIO)
+        self.time_since_last_motion = int(time.time())
+        self.light_status = self.sengled_api.device_state()
+
         # For continuous check for motion
         self.begin_sensing_thread()
 
@@ -56,38 +60,31 @@ class App(tk.Frame):
         return self.brightness == self.get_brightness()
 
     def motion_detection(self):
-        detector = motion_detector.MotionSensor(PIR_GPIO)
-        time_since_last_motion = time.time()
-        light_status = self.sengled_api.device_state()
-
-        while True:
-            mutex.acquire()
-            motion_sensor = detector.sensor_status()
-            if time_between(7, 22):
-                if motion_sensor == 0:
-                    print(time.time() - time_since_last_motion)
-                    print(light_status)
-                    print((time.time() - time_since_last_motion) > 10 and (light_status == 'on' or light_status == ''))
-                    if (time.time() - time_since_last_motion) > 10 and (light_status == 'on' or light_status == ''):
-                        self.sengled_api.devices_off()
-                        light_status = 'off'
-                        print('no motion detected')
-                elif motion_sensor == 1:
-                    time_since_last_motion = time.time()
-                    if light_status == 'off' or light_status == '' or self.is_correct_brightness() is False:
-                        light_status = 'on'
-                        self.sengled_api.devices_on()
-                        print('motion detected friend')
-                        self.sengled_api.set_devices_brightness(self.get_brightness())
-                        self.brightness = self.get_brightness()
-            elif self.override.get() == 1:
-                if not self.is_correct_brightness():
+        motion_sensor = self.detector.sensor_status()
+        if self.override.get() == 1:
+            if not self.is_correct_brightness():
+                self.sengled_api.set_devices_brightness(self.get_brightness())
+        elif time_between(0, 22):
+            if motion_sensor == 0:
+                print(int(time.time()) - self.time_since_last_motion)
+                print(self.light_status)
+                print((int(time.time()) - self.time_since_last_motion) > 10 and (self.light_status == 'on' or self.light_status == ''))
+                if (int(time.time()) - self.time_since_last_motion) > 10 and (self.light_status == 'on' or self.light_status == ''):
+                    self.sengled_api.devices_off()
+                    self.light_status = 'off'
+                    print('no motion detected')
+            elif motion_sensor == 1:
+                self.time_since_last_motion = int(time.time())
+                if self.light_status == 'off' or self.light_status == '' or self.is_correct_brightness() is False:
+                    self.light_status = 'on'
+                    self.sengled_api.devices_on()
+                    print('motion detected friend')
                     self.sengled_api.set_devices_brightness(self.get_brightness())
-            elif light_status == 'on' or light_status == '':
-                self.sengled_api.devices_off()
-                light_status = 'off'
-            mutex.release()
-            time.sleep(0.5)
+                    self.brightness = self.get_brightness()
+        elif self.light_status == 'on' or self.light_status == '':
+            self.sengled_api.devices_off()
+            self.light_status = 'off'
+        self.after(500, self.motion_detection)
 
     def get_brightness(self):
         if self.override.get() == 0:
@@ -101,7 +98,6 @@ class App(tk.Frame):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    mutex = Lock()
     motion_detector.setmode_bcm()
     PIR_GPIO = 21
     root = tk.Tk()

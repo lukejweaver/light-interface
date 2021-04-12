@@ -102,6 +102,7 @@ class App(tk.Frame):
 if __name__ == "__main__":
     # execute only if run as a script
     mutex = Lock()
+    motion_detector.setmode_bcm()
     PIR_GPIO = 21
     root = tk.Tk()
     width = root.winfo_screenwidth()

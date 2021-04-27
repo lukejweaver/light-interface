@@ -20,11 +20,11 @@ def close():
 
 
 class App(tk.Frame):
+    QUIET_HOURS = [[22, 7]]
+
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
         master['bg'] = '#4a4a4a'
-        button = tk.Button(master, text='Close the window', fg='#4a4a4a', command=close)
-        button.pack(pady=10)
 
         self.sengled_api = sengled_interface.SengledInterface()
 
@@ -34,16 +34,24 @@ class App(tk.Frame):
         self.scale_variable = tk.IntVar()
         self.override = tk.IntVar()
 
+        self.new_frame = tk.Frame(master)
+
         # Checkbutton for manual override
-        self.checkbutton = tk.Checkbutton(master, text='Manual Override', variable=self.override, onvalue=1, offvalue=0,
+        self.checkbutton = tk.Checkbutton(self.new_frame, text='Manual Override', variable=self.override, onvalue=1, offvalue=0,
                                           bg='#4a4a4a', pady=20)
-        self.checkbutton.place(relx=0.7, rely=0.5)
+        self.checkbutton.grid(row=1)
+
+        # Button to end the program
+        button = tk.Button(self.new_frame, text='End Program', fg='#4a4a4a', command=close)
+        button.grid(row=2)
+
+        self.new_frame.pack(side=tk.RIGHT, padx=50)
 
         # Scale for setting light level (input only matters when manual override set)
-        self.scale = tk.Scale(master, variable=self.scale_variable, bd=0, width=width/10, from_=100, to=0, sliderrelief='groove',
+        self.scale = tk.Scale(master, variable=self.scale_variable, bd=0, width=width/4, from_=100, to=0, sliderrelief='groove',
                               sliderlength=height/10, length=height, background='#4a4a4a', fg="gray",
                               troughcolor='#a3f6ff')
-        self.scale.pack(side=tk.LEFT, anchor='c')
+        self.scale.pack(side=tk.LEFT, anchor='c', pady=10, padx=10)
 
         self.detector = motion_detector.MotionSensor(PIR_GPIO)
         self.time_since_last_motion = int(time.time())
@@ -72,14 +80,11 @@ class App(tk.Frame):
                     if (int(time.time()) - self.time_since_last_motion) > 300 and self.light_status == 'on':
                         self.sengled_api.devices_off()
                         self.light_status = 'off'
-                        print('no motion detected')
                 elif motion_sensor == 1:
-                    print(motion_sensor)
                     self.time_since_last_motion = int(time.time())
                     if self.light_status == 'off' or self.is_correct_brightness() is False:
                         self.light_status = 'on'
                         self.sengled_api.devices_on()
-                        print('motion detected friend')
                         self.sengled_api.set_devices_brightness(self.get_brightness())
                         self.brightness = self.get_brightness()
             elif self.light_status == 'on':
@@ -95,6 +100,19 @@ class App(tk.Frame):
                 return 100
         else:
             return self.scale_variable.get()
+
+    # hour ranges for the quiet hours are inclusive
+    def quiet_hours(self):
+        for hour_range in App.QUIET_HOURS:
+            beginning_hour = hour_range[0]
+            ending_hour = hour_range[1]
+            current_hour = datetime.datetime.now().hour
+            # 22 - 7 (positive)
+            if (beginning_hour - ending_hour) >= 0:
+                return (beginning_hour <= current_hour <= 23) or (0 <= current_hour <= ending_hour)
+            # 7 - 22 (negative)
+            else:
+                return beginning_hour <= current_hour <= ending_hour
 
 
 if __name__ == "__main__":

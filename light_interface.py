@@ -60,31 +60,32 @@ class App(tk.Frame):
         return self.brightness == self.get_brightness()
 
     def motion_detection(self):
-        motion_sensor = self.detector.sensor_status()
-        if self.override.get() == 1:
-            if not self.is_correct_brightness():
-                self.sengled_api.set_devices_brightness(self.get_brightness())
-        elif time_between(0, 22):
-            if motion_sensor == 0:
-                print(int(time.time()) - self.time_since_last_motion)
-                print(self.light_status)
-                print((int(time.time()) - self.time_since_last_motion) > 10 and (self.light_status == 'on' or self.light_status == ''))
-                if (int(time.time()) - self.time_since_last_motion) > 10 and (self.light_status == 'on' or self.light_status == ''):
-                    self.sengled_api.devices_off()
-                    self.light_status = 'off'
-                    print('no motion detected')
-            elif motion_sensor == 1:
-                self.time_since_last_motion = int(time.time())
-                if self.light_status == 'off' or self.light_status == '' or self.is_correct_brightness() is False:
-                    self.light_status = 'on'
-                    self.sengled_api.devices_on()
-                    print('motion detected friend')
+        while True:
+            motion_sensor = self.detector.sensor_status()
+            if self.override.get() == 1:
+                if not self.is_correct_brightness():
                     self.sengled_api.set_devices_brightness(self.get_brightness())
                     self.brightness = self.get_brightness()
-        elif self.light_status == 'on' or self.light_status == '':
-            self.sengled_api.devices_off()
-            self.light_status = 'off'
-        self.after(500, self.motion_detection)
+                    self.light_status = 'on'
+            elif time_between(7, 22):
+                if motion_sensor == 0:
+                    if (int(time.time()) - self.time_since_last_motion) > 300 and self.light_status == 'on':
+                        self.sengled_api.devices_off()
+                        self.light_status = 'off'
+                        print('no motion detected')
+                elif motion_sensor == 1:
+                    print(motion_sensor)
+                    self.time_since_last_motion = int(time.time())
+                    if self.light_status == 'off' or self.is_correct_brightness() is False:
+                        self.light_status = 'on'
+                        self.sengled_api.devices_on()
+                        print('motion detected friend')
+                        self.sengled_api.set_devices_brightness(self.get_brightness())
+                        self.brightness = self.get_brightness()
+            elif self.light_status == 'on':
+                self.sengled_api.devices_off()
+                self.light_status = 'off'
+            time.sleep(1)
 
     def get_brightness(self):
         if self.override.get() == 0:

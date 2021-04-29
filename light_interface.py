@@ -34,15 +34,15 @@ class App(tk.Frame):
         self.scale_variable = tk.IntVar()
         self.override = tk.IntVar()
 
-        self.new_frame = tk.Frame(master)
+        self.new_frame = tk.Frame(master, bg='#4a4a4a')
 
         # Checkbutton for manual override
         self.checkbutton = tk.Checkbutton(self.new_frame, text='Manual Override', variable=self.override, onvalue=1, offvalue=0,
-                                          bg='#4a4a4a', pady=20)
+                                          bg='#4a4a4a', pady=20, highlightthickness=0, bd=0)
         self.checkbutton.grid(row=1)
 
         # Button to end the program
-        button = tk.Button(self.new_frame, text='End Program', fg='#4a4a4a', command=close)
+        button = tk.Button(self.new_frame, text='End Program', fg='#4a4a4a', command=close, bd=0)
         button.grid(row=2)
 
         self.new_frame.pack(side=tk.RIGHT, padx=50)
@@ -50,7 +50,7 @@ class App(tk.Frame):
         # Scale for setting light level (input only matters when manual override set)
         self.scale = tk.Scale(master, variable=self.scale_variable, bd=0, width=width/4, from_=100, to=0, sliderrelief='groove',
                               sliderlength=height/10, length=height, background='#4a4a4a', fg="gray",
-                              troughcolor='#a3f6ff')
+                              troughcolor='#a3f6ff', highlightthickness=0)
         self.scale.pack(side=tk.LEFT, anchor='c', pady=10, padx=10)
 
         self.detector = motion_detector.MotionSensor(PIR_GPIO)

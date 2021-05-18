@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # pip3 install git+https://github.com/vroy/python-sengled-client.git#egg=sengled-client
 
+from subprocess import run
 import datetime
 import tkinter as tk
 import time
@@ -25,6 +26,8 @@ class App(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
         master['bg'] = '#4a4a4a'
+
+        self.is_display_on = True
 
         self.sengled_api = sengled_interface.SengledInterface()
 
@@ -67,6 +70,16 @@ class App(tk.Frame):
     def is_correct_brightness(self):
         return self.brightness == self.get_brightness()
 
+    def display_off(self):
+        if self.is_display_on:
+            run('vcgencmd display_power 0', shell=True)
+            self.is_display_on = False
+
+    def display_on(self):
+        if not self.is_display_on:
+            run('vcgencmd display_power 1', shell=True)
+            self.is_display_on = True
+
     def motion_detection(self):
         while True:
             motion_sensor = self.detector.sensor_status()
@@ -75,21 +88,25 @@ class App(tk.Frame):
                     self.sengled_api.set_devices_brightness(self.get_brightness())
                     self.brightness = self.get_brightness()
                     self.light_status = 'on'
+                    self.display_on()
             elif time_between(7, 22):
                 if motion_sensor == 0:
                     if (int(time.time()) - self.time_since_last_motion) > 300 and self.light_status == 'on':
                         self.sengled_api.devices_off()
                         self.light_status = 'off'
+                        self.display_off()
                 elif motion_sensor == 1:
                     self.time_since_last_motion = int(time.time())
                     if self.light_status == 'off' or self.is_correct_brightness() is False:
                         self.light_status = 'on'
+                        self.display_on()
                         self.sengled_api.devices_on()
                         self.sengled_api.set_devices_brightness(self.get_brightness())
                         self.brightness = self.get_brightness()
             elif self.light_status == 'on':
                 self.sengled_api.devices_off()
                 self.light_status = 'off'
+                self.display_off()
             time.sleep(1)
 
     def get_brightness(self):

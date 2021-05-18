@@ -12,3 +12,6 @@ class MotionSensor:
 
     def sensor_status(self):
         return GPIO.input(self.gpio)
+
+    def individual_sensed(self):
+        return True if self.sensor_status() is 1 else False

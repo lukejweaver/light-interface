@@ -26,7 +26,7 @@ class SengledInterface:
         self.api.set_brightness(self.devices(), brightness)
 
     def device_state(self):
-        return 'on' if self.devices()[0].onoff is True else 'off'
+        return self.devices()[0].onoff
 
     def device_brightness(self):
         return self.devices()[0].brightness

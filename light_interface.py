@@ -35,18 +35,30 @@ class App(tk.Frame):
 
         self.master = master
         self.scale_variable = tk.IntVar()
-        self.override = tk.IntVar()
+        self.brightness_override = tk.IntVar()
+        self.timer_override = tk.IntVar()
+        self.lights_out = tk.IntVar()
 
         self.new_frame = tk.Frame(master, bg='#4a4a4a')
 
         # Checkbutton for manual override
-        self.checkbutton = tk.Checkbutton(self.new_frame, text='Manual Override', variable=self.override, onvalue=1, offvalue=0,
-                                          bg='#4a4a4a', pady=20, highlightthickness=0, bd=0)
-        self.checkbutton.grid(row=1)
+        self.brightness_override_checkbox = tk.Checkbutton(self.new_frame, text='Manual Override', variable=self.brightness_override, onvalue=1, offvalue=0,
+                                                           bg='#4a4a4a', pady=20, highlightthickness=0, bd=0)
+        self.brightness_override_checkbox.grid(row=1)
+
+        # Checkbutton for timer override
+        self.timer_override_checkbox = tk.Checkbutton(self.new_frame, text='Timer Override', variable=self.timer_override, onvalue=1, offvalue=0,
+                                                      bg='#4a4a4a', pady=20, highlightthickness=0, bd=0)
+        self.timer_override_checkbox.grid(row=2)
+
+        # Checkbutton for lights off override
+        self.timer_override_checkbox = tk.Checkbutton(self.new_frame, text='Lights Out', variable=self.lights_out, onvalue=1, offvalue=0,
+                                                      bg='#4a4a4a', pady=20, highlightthickness=0, bd=0)
+        self.timer_override_checkbox.grid(row=3)
 
         # Button to end the program
         button = tk.Button(self.new_frame, text='End Program', fg='#4a4a4a', command=close, bd=0)
-        button.grid(row=2)
+        button.grid(row=4)
 
         self.new_frame.pack(side=tk.RIGHT, padx=50)
 
@@ -58,7 +70,7 @@ class App(tk.Frame):
 
         self.detector = motion_detector.MotionSensor(PIR_GPIO)
         self.time_since_last_motion = int(time.time())
-        self.light_status = self.sengled_api.device_state()
+        self.are_lights_on = self.sengled_api.device_state()
 
         # For continuous check for motion
         self.begin_sensing_thread()
@@ -70,47 +82,77 @@ class App(tk.Frame):
     def is_correct_brightness(self):
         return self.brightness == self.get_brightness()
 
-    def display_off(self):
+    def peripherals_off(self):
+        self.are_lights_on = False
+        self.sengled_api.devices_off()
         if self.is_display_on:
             run('vcgencmd display_power 0', shell=True)
             self.is_display_on = False
 
-    def display_on(self):
+    def peripherals_on(self):
+        self.are_lights_on = True
+        self.sengled_api.devices_on()
+        self.update_brightness()
         if not self.is_display_on:
             run('vcgencmd display_power 1', shell=True)
             self.is_display_on = True
 
+    def update_brightness(self):
+        if not self.is_correct_brightness():
+            self.sengled_api.set_devices_brightness(self.get_brightness())
+            self.brightness = self.get_brightness()
+
+    def is_timer_up(self):
+        time_now = int(time.time())
+        return (time_now - self.time_since_last_motion) > 300
+
+    def should_turn_lights_off(self):
+        if self.timer_override.get() == 1:
+            return False
+        if self.brightness_override.get() == 1 and not self.is_timer_up():
+            return False
+        # If it is lights out or quiet hours and lights are on, turn the lights off
+        elif (self.lights_out.get() == 1 or self.quiet_hours()) and self.are_lights_on:
+            return True
+        else:
+            # Make sure no motion detected, the timer is up, and the lights are on
+            return not self.motion_detected() and self.is_timer_up() and self.are_lights_on
+
+    def should_turn_lights_on(self):
+        if not self.is_correct_brightness() and self.brightness_override.get() == 1:
+            return True
+        elif self.lights_out.get() == 1:
+            return False
+        elif self.timer_override.get() == 1 and not self.are_lights_on:
+            return True
+        else:
+            return self.motion_detected() and not self.are_lights_on and not self.quiet_hours() or not self.is_correct_brightness()
+
+    def motion_detected(self):
+        motion_detected = self.detector.individual_sensed()
+        if motion_detected:
+            self.time_since_last_motion = int(time.time())
+
+        return motion_detected
+
     def motion_detection(self):
         while True:
-            motion_sensor = self.detector.sensor_status()
-            if self.override.get() == 1:
-                if not self.is_correct_brightness():
-                    self.sengled_api.set_devices_brightness(self.get_brightness())
-                    self.brightness = self.get_brightness()
-                    self.light_status = 'on'
-                    self.display_on()
-            elif time_between(7, 22):
-                if motion_sensor == 0:
-                    if (int(time.time()) - self.time_since_last_motion) > 300 and self.light_status == 'on':
-                        self.sengled_api.devices_off()
-                        self.light_status = 'off'
-                        self.display_off()
-                elif motion_sensor == 1:
-                    self.time_since_last_motion = int(time.time())
-                    if self.light_status == 'off' or self.is_correct_brightness() is False:
-                        self.light_status = 'on'
-                        self.display_on()
-                        self.sengled_api.devices_on()
-                        self.sengled_api.set_devices_brightness(self.get_brightness())
-                        self.brightness = self.get_brightness()
-            elif self.light_status == 'on':
-                self.sengled_api.devices_off()
-                self.light_status = 'off'
-                self.display_off()
+            # If timer off ignore the time_since_last_motion and motion sensor
+            # If manual override is true ignore the quiet hours
+            # If turn off until tomorrow then ensure lights are off, if so do nothing (reset at hour == 0)
+
+            if self.should_turn_lights_off():
+                self.peripherals_off()
+            elif self.should_turn_lights_on():
+                self.peripherals_on()
+
+            if datetime.datetime.now().hour == 0:
+                self.lights_out.set(0)
+
             time.sleep(1)
 
     def get_brightness(self):
-        if self.override.get() == 0:
+        if self.brightness_override.get() == 0:
             if datetime.datetime.now().hour == 22:
                 return 10
             else:

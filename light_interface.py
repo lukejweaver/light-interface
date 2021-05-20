@@ -21,7 +21,7 @@ def close():
 
 
 class App(tk.Frame):
-    QUIET_HOURS = [[22, 7]]
+    QUIET_HOURS = [[23, 8]]
 
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
@@ -182,6 +182,7 @@ if __name__ == "__main__":
     width = root.winfo_screenwidth()
     height = root.winfo_screenheight()
     root.geometry(f'{width}x{height}')
+    root.attributes('-fullscreen', True)
     app = App(root)
     root.wm_title("Light interface")
     root.mainloop()

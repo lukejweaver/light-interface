@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-
+import data_helper
 
 def setmode_bcm():
     GPIO.setmode(GPIO.BCM)
@@ -14,4 +14,4 @@ class MotionSensor:
         return GPIO.input(self.gpio)
 
     def individual_sensed(self):
-        return True if self.sensor_status() is 1 else False
+        return data_helper.checkbox_value(self.sensor_status())

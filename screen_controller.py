@@ -7,7 +7,7 @@ class ScreenController:
         self.gpio_pin = pin
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.gpio_pin, GPIO.OUT)
-        self.is_display_on = True
+        self.is_display_on = False
         application.add_observer(self)
 
     def update(self, updated_brightness, is_brightness_overridden, is_lights_out, is_timer_overridden,

@@ -10,16 +10,6 @@ import datetime
 import time_helper
 
 
-def get_brightness(updated_brightness, is_brightness_overridden):
-    if not is_brightness_overridden:
-        if datetime.datetime.now().hour == 22:
-            return 10
-        else:
-            return 100
-    else:
-        return updated_brightness
-
-
 class LightController:
     def __init__(self, sengled_api, application):
         self.sengled_api = sengled_api
@@ -42,8 +32,8 @@ class LightController:
         elif not self.are_lights_on and not should_turn_lights_off:
             self.lights_on()
 
-        if not self.is_correct_brightness(updated_brightness=updated_brightness, is_brightness_overridden=is_brightness_overridden):
-            self.update_brightness(get_brightness(updated_brightness=updated_brightness, is_brightness_overridden=is_brightness_overridden))
+        if not self.is_correct_brightness(updated_brightness=updated_brightness, is_brightness_overridden=is_brightness_overridden) and not should_turn_lights_off:
+            self.update_brightness(self.get_brightness(updated_brightness=updated_brightness, is_brightness_overridden=is_brightness_overridden))
 
     def is_quiet_hours(self, is_brightness_overridden):
         if is_brightness_overridden:
@@ -51,13 +41,22 @@ class LightController:
         else:
             return time_helper.quiet_hours()
 
+    def get_brightness(self, updated_brightness, is_brightness_overridden):
+        if not is_brightness_overridden:
+            if datetime.datetime.now().hour == 22:
+                return 10
+            else:
+                return 100
+        else:
+            return updated_brightness
+
     def update_brightness(self, new_brightness):
         self.sengled_api.set_devices_brightness(new_brightness)
         self.current_brightness = new_brightness
 
     def is_correct_brightness(self, updated_brightness, is_brightness_overridden):
-        return get_brightness(updated_brightness=updated_brightness,
-                              is_brightness_overridden=is_brightness_overridden) == self.current_brightness
+        return self.get_brightness(updated_brightness=updated_brightness,
+                                   is_brightness_overridden=is_brightness_overridden) == self.current_brightness
 
     def lights_off(self):
         self.are_lights_on = False

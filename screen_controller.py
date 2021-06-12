@@ -12,7 +12,7 @@ class ScreenController:
 
     def update(self, updated_brightness, is_brightness_overridden, is_lights_out, is_timer_overridden,
                time_since_last_motion, frame_focus_timer):
-        if time_helper.is_time_elapsed_greater_than(minutes=10, starting_time=frame_focus_timer,
+        if time_helper.is_time_elapsed_greater_than(minutes=1, starting_time=frame_focus_timer,
                                                     is_timer_overridden=False):
             self.screen_off()
         else:

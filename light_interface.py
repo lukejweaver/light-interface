@@ -136,8 +136,8 @@ class App(tk.Frame):
                 ) or
                 time_helper.is_time_minute_increment(
                     starting_time=self.frame_focus_timer,
-                    upper_limit=20,
-                    multiple=10
+                    upper_limit=3,
+                    multiple=1
                 ) or
                 self.individual_sensed or
                 self.previous_hour != current_hour or
